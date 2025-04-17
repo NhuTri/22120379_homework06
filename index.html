@@ -22,17 +22,57 @@
 
             context.drawImage(video, 0, 0, width, height);
 
-            let src = cv.imread(canvas);
-            let dst = new cv.Mat();
-            let gray = new cv.Mat();
+            let imageData = context.getImageData(0, 0, width, height);
+            let data = imageData.data;
 
-            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-            cv.Laplacian(gray, dst, cv.CV_8U, 3, 1, 0);
-            cv.imshow(canvas, dst);
+            for (let i = 0; i < data.length; i += 4) {
+                let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                data[i] = avg;
+                data[i + 1] = avg;
+                data[i + 2] = avg;
+            }
 
-            src.delete();
-            gray.delete();
-            dst.delete();
+            const kernelX = [
+                [-1, 0, 1],
+                [-1, 0, 1],
+                [-1, 0, 1]
+            ];
+            const kernelY = [
+                [-1, -1, -1],
+                [ 0,  0,  0],
+                [ 1,  1,  1]
+            ];
+
+            const thresh = 50;
+
+            let outputData = new Uint8ClampedArray(data.length);
+
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gx = 0, gy = 0;
+
+                    for (let j = -1; j <= 1; j++) {
+                        for (let k = -1; k <= 1; k++) {
+                            let pixelIndex = ((y + j) * width + (x + k)) * 4;
+                            let gray = data[pixelIndex];
+                            gx += kernelX[j + 1][k + 1] * gray;
+                            gy += kernelY[j + 1][k + 1] * gray;
+                        }
+                    }
+
+                    let gradient = Math.sqrt(gx * gx + gy * gy);
+                    let edgeValue = gradient > thresh ? 255 : 0;
+
+                    let outputIndex = (y * width + x) * 4;
+                    outputData[outputIndex] = edgeValue;
+                    outputData[outputIndex + 1] = edgeValue;
+                    outputData[outputIndex + 2] = edgeValue;
+                    outputData[outputIndex + 3] = 255;
+                }
+            }
+
+            let outputImageData = new ImageData(outputData, width, height);
+            context.putImageData(outputImageData, 0, 0);
 
             setTimeout(EdgeDetection, 5, video, context, width, height);
         }
