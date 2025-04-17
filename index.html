@@ -10,7 +10,7 @@
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
             });
-
+            
             video.addEventListener("play", function () {
                 EdgeDetection(video, context, video.videoWidth, video.videoHeight);
             }, false);
